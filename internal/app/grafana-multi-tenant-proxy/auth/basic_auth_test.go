@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 )
 
 func TestBasicAuthenticator_Authenticate(t *testing.T) {
-	authConfig := &pkg.Authn{
-		Users: []pkg.User{
+	authConfig := &config.AuthenticationConfig{
+		Users: []config.User{
 			{
 				Username: "user1",
 				Password: "pass1",

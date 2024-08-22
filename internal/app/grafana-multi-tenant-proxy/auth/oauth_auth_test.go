@@ -6,14 +6,15 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 )
 
 func TestOAuthAuthenticator_Authenticate(t *testing.T) {
-	authConfig := &pkg.Authn{
-		Users: []pkg.User{
+	authConfig := &config.AuthenticationConfig{
+		Users: []config.User{
 			{
 				Username: "read",
 				Password: "passread",

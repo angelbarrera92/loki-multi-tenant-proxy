@@ -12,8 +12,9 @@ import (
 	"strings"
 
 	"github.com/coreos/go-oidc"
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
 	"go.uber.org/zap"
+
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 )
 
 const (
@@ -28,7 +29,7 @@ type Payload struct {
 
 type OAuthAuthenticator struct {
 	token      string
-	authConfig *pkg.Authn
+	authConfig *config.AuthenticationConfig
 	logger     *zap.Logger
 }
 
@@ -42,6 +43,7 @@ func (a OAuthAuthenticator) Authenticate(r *http.Request) (bool, string) {
 		a.logger.Error(fmt.Sprintf("Error decoding token payload %s", a.token), zap.Error(err))
 		return false, ""
 	}
+
 	// Token validation against identity provider
 	err = validateFunc(a.token, payload, r.Context())
 	if err != nil {

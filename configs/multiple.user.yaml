@@ -1,4 +1,5 @@
-users:
+authentication:
+  users:
   - username: User-a
     password: pass-a
     orgid: tenant-a

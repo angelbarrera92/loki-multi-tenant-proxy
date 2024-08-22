@@ -7,57 +7,55 @@ import (
 	"net/url"
 
 	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/auth"
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
-var keepOrgID bool
-var authConfigLocation string
-var authConfig *pkg.Authn
+var proxyConfig *config.Config
 
-func loadConfig() (*pkg.Authn, error) {
-	config, err := pkg.ParseConfig(&authConfigLocation)
-	config.KeepOrgID = keepOrgID
-	return config, err
+func initLogger(logLevel string) (*zap.Logger, error) {
+	zapConfig := zap.NewProductionConfig()
+	level, err := zap.ParseAtomicLevel(logLevel)
+	if err != nil {
+		return nil, err
+	}
+	zapConfig.Level = level
+
+	return zapConfig.Build()
 }
 
-// Serve serves
+// Serve serves requests to the proxy
 func Serve(c *cli.Context) error {
-	targetServerURL, _ := url.Parse(c.String("target-server"))
-	addr := fmt.Sprintf(":%d", c.Int("port"))
-	authConfigLocation = c.String("auth-config")
-	keepOrgID = c.Bool("keep-orgid")
 	logLevel := c.String("log-level")
 	if logLevel == "" {
 		logLevel = "INFO"
 	}
 
-	var logger *zap.Logger
-	{
-		zapConfig := zap.NewProductionConfig()
-		level, err := zap.ParseAtomicLevel(logLevel)
-		if err != nil {
-			return cli.Exit(fmt.Sprintf("Could not parse log level %v", err), -1)
-		}
-		zapConfig.Level = level
-
-		logger = zap.Must(zapConfig.Build())
-		defer logger.Sync()
+	logger, err := initLogger(logLevel)
+	if err != nil {
+		return cli.Exit(fmt.Sprintf("Could not create logger %v", err), -1)
 	}
+	// Ensure that the logger is flushed before the program exits
+	defer logger.Sync()
 
 	errorLogger, err := zap.NewStdLogAt(logger, zap.ErrorLevel)
 	if err != nil {
-		return cli.Exit(fmt.Sprintf("Could not create standard logger %v", err), -1)
+		return cli.Exit(fmt.Sprintf("Could not create error logger %v", err), -1)
 	}
 
-	authConfig, err = loadConfig()
+	configLocation := c.String("config")
+	proxyConfig, err = config.ParseConfig(&configLocation)
 	if err != nil {
 		return cli.Exit(fmt.Sprintf("Could not parse config %v", err), -1)
 	}
 
 	var reverseProxy *httputil.ReverseProxy
 	{
+		targetServerURL, err := url.Parse(proxyConfig.TargetServerURL)
+		if err != nil {
+			return cli.Exit(fmt.Sprintf("Could not parse target server url %v", err), -1)
+		}
 		reverseProxy = &httputil.ReverseProxy{
 			Rewrite: func(r *httputil.ProxyRequest) {
 				r.SetURL(targetServerURL)
@@ -76,7 +74,7 @@ func Serve(c *cli.Context) error {
 	authenticationMiddleware := auth.NewAuthenticationMiddleware(
 		logger,
 		ReverseTarget(reverseProxy),
-		*authConfig,
+		proxyConfig.Authentication,
 	)
 
 	handlers := Logger(
@@ -85,23 +83,26 @@ func Serve(c *cli.Context) error {
 	)
 
 	http.HandleFunc("/", handlers)
+	// Reload config endpoint
 	http.HandleFunc("/-/reload", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			http.Error(w, "Invalid request method.", http.StatusMethodNotAllowed)
 			return
 		}
-		authConfig, err := loadConfig()
 
+		proxyConfig, err = config.ParseConfig(&configLocation)
 		if err != nil {
 			logger.Error("Could not reload config", zap.Error(err))
 			w.WriteHeader(500)
 		} else {
-			authenticationMiddleware.ApplyConfig(*authConfig)
+			authenticationMiddleware.ApplyConfig(proxyConfig.Authentication)
 			w.WriteHeader(200)
 			w.Write([]byte("OK"))
 		}
 	})
 
+	// Start the server
+	addr := fmt.Sprintf(":%d", c.Int("port"))
 	server := &http.Server{Addr: addr, ErrorLog: errorLogger}
 	if err := server.ListenAndServe(); err != nil {
 		return cli.Exit(fmt.Sprintf("Grafana multi tenant proxy could not start %v", err), -1)

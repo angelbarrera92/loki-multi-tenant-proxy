@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
 	"go.uber.org/zap"
+
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 )
 
 type key int
@@ -22,13 +23,14 @@ type Authenticator interface {
 	Authenticate(r *http.Request) (bool, string)
 	OnAuthenticationError(w http.ResponseWriter)
 }
+
 type AuthenticationMiddleware struct {
 	handler    http.HandlerFunc
-	authConfig *pkg.Authn
+	authConfig *config.AuthenticationConfig
 	logger     *zap.Logger
 }
 
-func NewAuthenticationMiddleware(logger *zap.Logger, handler http.HandlerFunc, authConfig pkg.Authn) *AuthenticationMiddleware {
+func NewAuthenticationMiddleware(logger *zap.Logger, handler http.HandlerFunc, authConfig config.AuthenticationConfig) *AuthenticationMiddleware {
 	return &AuthenticationMiddleware{
 		handler:    handler,
 		authConfig: &authConfig,
@@ -58,12 +60,12 @@ func (am AuthenticationMiddleware) Authenticate() http.HandlerFunc {
 	}
 }
 
-func (am AuthenticationMiddleware) ApplyConfig(authConfig pkg.Authn) {
+func (am AuthenticationMiddleware) ApplyConfig(authConfig config.AuthenticationConfig) {
 	*am.authConfig = authConfig
 }
 
 // newAuthenticator returns the authentication mode used by the request and its credentials
-func newAuthenticator(r *http.Request, authConfig *pkg.Authn, logger *zap.Logger) (Authenticator, error) {
+func newAuthenticator(r *http.Request, authConfig *config.AuthenticationConfig, logger *zap.Logger) (Authenticator, error) {
 	// OAuth token is favorite authentication mode
 	token := r.Header.Get("X-Id-Token")
 	if token != "" {

@@ -1,4 +1,4 @@
-package pkg
+package config
 
 import (
 	"reflect"
@@ -6,34 +6,38 @@ import (
 )
 
 func TestParseConfig(t *testing.T) {
-	configInvalidLocation := "../../configs/no.config.yaml"
-	configInvalidConfigFileLocation := "../../configs/bad.yaml"
-	configSampleLocation := "../../configs/sample.yaml"
-	configMultipleUserLocation := "../../configs/multiple.user.yaml"
-	expectedSampleAuth := Authn{
-		[]User{
-			{
-				"Grafana",
-				"Loki",
-				"tenant-1",
+	configInvalidLocation := "../../../../configs/no.config.yaml"
+	configInvalidConfigFileLocation := "../../../../configs/bad.yaml"
+	configSampleLocation := "../../../../configs/sample.yaml"
+	configMultipleUserLocation := "../../../../configs/multiple.user.yaml"
+	expectedSampleAuth := Config{
+		Authentication: AuthenticationConfig{
+			[]User{
+				{
+					"Grafana",
+					"Loki",
+					"tenant-1",
+				},
 			},
+			false,
 		},
-		false,
 	}
-	expectedMultipleUserAuth := Authn{
-		[]User{
-			{
-				"User-a",
-				"pass-a",
-				"tenant-a",
+	expectedMultipleUserAuth := Config{
+		Authentication: AuthenticationConfig{
+			[]User{
+				{
+					"User-a",
+					"pass-a",
+					"tenant-a",
+				},
+				{
+					"User-b",
+					"pass-b",
+					"tenant-b",
+				},
 			},
-			{
-				"User-b",
-				"pass-b",
-				"tenant-b",
-			},
+			false,
 		},
-		false,
 	}
 	type args struct {
 		location *string
@@ -41,7 +45,7 @@ func TestParseConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *Authn
+		want    *Config
 		wantErr bool
 	}{
 		{

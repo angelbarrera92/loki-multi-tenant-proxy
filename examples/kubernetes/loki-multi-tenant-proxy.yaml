@@ -2,19 +2,21 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: grafana-multi-tenant-proxy-auth-config
+  name: grafana-multi-tenant-proxy-config
   namespace: grafana
   labels:
     app: grafana-multi-tenant-proxy
 stringData:
-  authn.yaml: |-
-    users:
-      - username: Tenant1
-        password: 1tnaneT
-        orgid: tenant-1
-      - username: Tenant2
-        password: 2tnaneT
-        orgid: tenant-2
+  config.yaml: |-
+    targetServerUrl: http://loki.grafana.svc.cluster.local:3100
+    authentication:
+      users:
+        - username: Tenant1
+          password: 1tnaneT
+          orgid: tenant-1
+        - username: Tenant2
+          password: 2tnaneT
+          orgid: tenant-2
 ---
 apiVersion: v1
 kind: Service
@@ -49,21 +51,26 @@ spec:
     spec:
       containers:
       - name: grafana-multi-tenant-proxy
-        image: angelbarrera92/grafana-multi-tenant-proxy:dev
+        image: giantswarm/grafana-multi-tenant-proxy:dev
         args:
           - "run"
           - "--port=3100"
-          - "--loki-server=http://loki.grafana.svc.cluster.local:3100"
-          - "--auth-config=/etc/grafana-multi-tenant-proxy/authn.yaml"
+          - "--config=/etc/grafana-multi-tenant-proxy/config.yaml"
         ports:
           - name: http
             containerPort: 3100
-            protocol: TCP   
-        resources: {}
+            protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
         volumeMounts:
           - name: config
             mountPath: /etc/grafana-multi-tenant-proxy
       volumes:
         - name: config
           secret:
-            secretName: grafana-multi-tenant-proxy-auth-config
+            secretName: grafana-multi-tenant-proxy-config

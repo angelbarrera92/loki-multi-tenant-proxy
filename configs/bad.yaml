@@ -1,4 +1,5 @@
-users
+authentication:
+  users
   - username: Grafana
     password: Loki
     orgid: tenant-1

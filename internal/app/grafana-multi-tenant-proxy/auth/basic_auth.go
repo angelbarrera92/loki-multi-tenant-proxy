@@ -4,8 +4,9 @@ import (
 	"crypto/subtle"
 	"net/http"
 
-	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/pkg"
 	"go.uber.org/zap"
+
+	"github.com/giantswarm/grafana-multi-tenant-proxy/internal/app/grafana-multi-tenant-proxy/config"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 type BasicAuthenticator struct {
 	user       string
 	pwd        string
-	authConfig *pkg.Authn
+	authConfig *config.AuthenticationConfig
 	logger     *zap.Logger
 }
 
